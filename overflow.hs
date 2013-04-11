@@ -1,6 +1,7 @@
 module Main where
 
 import BEncode
+import Metainfo
 
 main :: IO ()
 main = do
