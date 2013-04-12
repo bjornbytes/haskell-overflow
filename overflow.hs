@@ -6,4 +6,4 @@ import Data.Maybe
 
 main :: IO ()
 main = do
-  print (decodeBList "l4:spam4:eggse")
+  print $ decodeBString "4:spam"

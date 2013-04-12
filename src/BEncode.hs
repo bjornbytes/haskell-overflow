@@ -16,30 +16,58 @@ instance Show BData where
     show (BList xs) = (show xs)
     show (BDictionary m) = (show $ toList m)
 
+extractBString :: BData -> Maybe String
+extractBString (BString s) = Just s
+extractBString _ = Nothing
+
+extractBInteger :: BData -> Maybe Int
+extractBInteger (BInteger x) = Just x
+extractBInteger _ = Nothing
+
+extractBList :: BData -> Maybe [BData]
+extractBList (BList xs) = Just xs
+extractBList _ = Nothing
+
+extractBDictionary :: BData -> Maybe (Map BData BData)
+extractBDictionary (BDictionary m) = Just m
+extractBDictionary _ = Nothing
+
+assumeBString :: BData -> String
+assumeBString x = case extractBString x of
+                    Just x -> x
+                    Nothing -> error $ "assumeBString applied to " ++ show x
+
+assumeBInteger :: BData -> Int
+assumeBInteger x = case extractBInteger x of
+                    Just x -> x
+                    Nothing -> error $ "assumeBInteger applied to " ++ show x
+
+assumeBList :: BData -> [BData]
+assumeBList x = case extractBList x of
+                    Just x -> x
+                    Nothing -> error $ "assumeBList applied to " ++ show x
+
+assumeBDictionary :: BData -> (Map BData BData)
+assumeBDictionary x = case extractBDictionary x of
+                    Just x -> x
+                    Nothing -> error $ "assumeBDictionary applied to " ++ show x
+
 decode :: String -> Maybe BData
 decode s = case (parse bdata "" s) of
+             Left err -> Nothing
              Right xs -> Just xs
-             otherwise -> Nothing
 
-decodeBString :: String -> Maybe String
-decodeBString s = case decode s of
-                    Just (BString x) -> Just x
-                    otherwise -> Nothing
+decodeBString :: String -> String
+decodeBString = assumeBString . fromJust . decode
 
-decodeBInteger :: String -> Maybe Int
-decodeBInteger s = case decode s of
-                     Just (BInteger x) -> Just x
-                     otherwise -> Nothing
+decodeBInteger :: String -> Int
+decodeBInteger = assumeBInteger . fromJust . decode
 
-decodeBList :: String -> Maybe [BData]
-decodeBList s = case decode s of
-                  Just (BList x) -> Just x
-                  otherwise -> Nothing
+decodeBList :: String -> [BData]
+decodeBList = assumeBList . fromJust . decode
 
-decodeBDictionary :: String -> Maybe (Map BData BData)
-decodeBDictionary s = case decode s of
-                        Just (BDictionary x) -> Just x
-                        otherwise -> Nothing
+decodeBDictionary :: String -> (Map BData BData)
+decodeBDictionary = assumeBDictionary . fromJust . decode
 
 bdata :: Parser BData
 bdata = bstring
