@@ -2,6 +2,7 @@ module BEncode where
 
 import Text.ParserCombinators.Parsec;
 import Data.Map;
+import Data.Maybe;
 
 data BData = BString String
            | BInteger Int
@@ -15,11 +16,32 @@ instance Show BData where
     show (BList xs) = (show xs)
     show (BDictionary m) = (show $ toList m)
 
-decode :: String -> IO ()
+decode :: String -> Maybe BData
 decode s = case (parse bdata "" s) of
-             Left err -> print err
-             Right xs -> print xs
+             Right xs -> Just xs
+             otherwise -> Nothing
 
+decodeBString :: String -> Maybe String
+decodeBString s = case decode s of
+                    Just (BString x) -> Just x
+                    otherwise -> Nothing
+
+decodeBInteger :: String -> Maybe Int
+decodeBInteger s = case decode s of
+                     Just (BInteger x) -> Just x
+                     otherwise -> Nothing
+
+decodeBList :: String -> Maybe [BData]
+decodeBList s = case decode s of
+                  Just (BList x) -> Just x
+                  otherwise -> Nothing
+
+decodeBDictionary :: String -> Maybe (Map BData BData)
+decodeBDictionary s = case decode s of
+                        Just (BDictionary x) -> Just x
+                        otherwise -> Nothing
+
+bdata :: Parser BData
 bdata = bstring
     <|> binteger
     <|> blist
