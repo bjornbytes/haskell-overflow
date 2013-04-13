@@ -1,14 +1,16 @@
 module BEncode where
 
-import Text.ParserCombinators.Parsec;
+import Text.ParserCombinators.Parsec hiding (Parser);
+import Text.Parsec.ByteString;
 import Data.Map;
 import Data.Maybe;
+import qualified Data.ByteString as B;
 
 data BData = BString String
            | BInteger Int
            | BList [BData]
            | BDictionary (Map BData BData)
-             deriving Eq
+             deriving (Eq, Ord)
 
 instance Show BData where
     show (BString s) = s
@@ -52,21 +54,21 @@ assumeBDictionary x = case extractBDictionary x of
                     Just x -> x
                     Nothing -> error $ "assumeBDictionary applied to " ++ show x
 
-decode :: String -> Maybe BData
+decode :: B.ByteString -> Maybe BData
 decode s = case (parse bdata "" s) of
              Left err -> Nothing
              Right xs -> Just xs
 
-decodeBString :: String -> String
+decodeBString :: B.ByteString -> String
 decodeBString = assumeBString . fromJust . decode
 
-decodeBInteger :: String -> Int
+decodeBInteger :: B.ByteString -> Int
 decodeBInteger = assumeBInteger . fromJust . decode
 
-decodeBList :: String -> [BData]
+decodeBList :: B.ByteString -> [BData]
 decodeBList = assumeBList . fromJust . decode
 
-decodeBDictionary :: String -> (Map BData BData)
+decodeBDictionary :: B.ByteString -> (Map BData BData)
 decodeBDictionary = assumeBDictionary . fromJust . decode
 
 bdata :: Parser BData

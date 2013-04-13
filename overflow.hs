@@ -6,4 +6,4 @@ import Data.Maybe
 
 main :: IO ()
 main = do
-  print $ decodeBString "4:spam"
+  metainfoFromFile "torrent.torrent"
