@@ -6,4 +6,5 @@ import Data.Maybe
 
 main :: IO ()
 main = do
-  metainfoFromFile "torrent.torrent"
+  m <- metainfoFromFile "torrent.torrent"
+  print m
