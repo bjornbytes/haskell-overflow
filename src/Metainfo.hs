@@ -14,7 +14,7 @@ data Metainfo = Metainfo {
       comment :: String,
       author :: String,
       encoding :: String
-} deriving Show
+}
 
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do
@@ -36,5 +36,5 @@ metainfoFromString contents = Metainfo {
     author = assumeBString . getKey $ "author",
     encoding = assumeBString . getKey $ "encoding"
   }
-  where dict = (decodeBDictionary contents)
+  where dict = decodeBDictionary contents
         getKey str = fromJust $ M.lookup (BString str) dict
