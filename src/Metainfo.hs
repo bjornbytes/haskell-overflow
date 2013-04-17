@@ -23,18 +23,18 @@ metainfoFromFile filename = do
 
 metainfoFromURL :: String -> IO Metainfo
 metainfoFromURL url = do
-  h <- simpleHTTP $ defaultGETRequest_ $ fromJust $ parseURI url
+  h <- simpleHTTP . defaultGETRequest_ . fromJust . parseURI $ url
   contents <- getResponseBody h
   return $ metainfoFromString contents
 
 metainfoFromString :: B.ByteString -> Metainfo
 metainfoFromString contents = Metainfo {
-    info = assumeBDictionary $ getKey "info",
-    announce = assumeBString $ getKey "announce",
-    created = assumeBInteger $ getKey "created",
-    comment = assumeBString $ getKey "comment",
-    author = assumeBString $ getKey "author",
-    encoding = assumeBString $ getKey "encoding"
+    info = assumeBDictionary . getKey $ "info",
+    announce = assumeBString . getKey $ "announce",
+    created = assumeBInteger . getKey $ "created",
+    comment = assumeBString . getKey $ "comment",
+    author = assumeBString . getKey $ "author",
+    encoding = assumeBString . getKey $ "encoding"
   }
   where dict = (decodeBDictionary contents)
         getKey str = fromJust $ M.lookup (BString str) dict
