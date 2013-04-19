@@ -2,21 +2,24 @@ module BEncode where
 
 import Text.ParserCombinators.Parsec hiding (Parser);
 import Text.Parsec.ByteString;
-import Data.Map;
+import qualified Data.Map as M;
 import Data.Maybe;
 import qualified Data.ByteString as B;
+import qualified Data.ByteString.Char8 as C;
+
+type BDict = M.Map String BData
 
 data BData = BString B.ByteString
            | BInteger Int
            | BList [BData]
-           | BDictionary (Map String BData)
+           | BDictionary BDict
              deriving (Eq, Ord)
 
 instance Show BData where
     show (BString s) = show s
     show (BInteger i) = show i
     show (BList xs) = show xs
-    show (BDictionary m) = (show $ toList m)
+    show (BDictionary m) = (show $ M.toList m)
 
 extractBString :: BData -> Maybe B.ByteString
 extractBString (BString s) = Just s
@@ -30,7 +33,7 @@ extractBList :: BData -> Maybe [BData]
 extractBList (BList xs) = Just xs
 extractBList _ = Nothing
 
-extractBDictionary :: BData -> Maybe (Map String BData)
+extractBDictionary :: BData -> Maybe BDict
 extractBDictionary (BDictionary m) = Just m
 extractBDictionary _ = Nothing
 
@@ -49,7 +52,7 @@ assumeBList x = case extractBList x of
                     Just x -> x
                     Nothing -> error $ "assumeBList applied to " ++ show x
 
-assumeBDictionary :: BData -> (Map String BData)
+assumeBDictionary :: BData -> BDict
 assumeBDictionary x = case extractBDictionary x of
                     Just x -> x
                     Nothing -> error $ "assumeBDictionary applied to " ++ show x
@@ -68,8 +71,15 @@ decodeBInteger = assumeBInteger . fromJust . decode
 decodeBList :: B.ByteString -> [BData]
 decodeBList = assumeBList . fromJust . decode
 
-decodeBDictionary :: B.ByteString -> (Map String BData)
+decodeBDictionary :: B.ByteString -> BDict
 decodeBDictionary = assumeBDictionary . fromJust . decode
+
+encode :: BData -> B.ByteString
+encode (BString s) = B.concat [C.pack (show $ B.length s), C.singleton ':', s]
+encode (BInteger x) = B.concat [C.singleton 'i', C.pack $ show x, C.singleton 'e']
+encode (BList xs) = B.concat [C.singleton 'l', B.concat $ map encode xs, C.singleton 'e']
+encode (BDictionary x) = B.concat [C.singleton 'd', B.concat $ map encodeElement $ M.toList x, C.singleton 'e']
+  where encodeElement (key, val) = B.append (encode $ BString $ C.pack key) (encode val)
 
 bdata :: Parser BData
 bdata = bstring
@@ -104,7 +114,7 @@ bdictionary = do
   char 'd'
   xs <- many1 bdictionaryElement
   char 'e'
-  return $ BDictionary (fromAscList xs)
+  return $ BDictionary (M.fromAscList xs)
 
 bdictionaryElement :: Parser (String, BData)
 bdictionaryElement = do

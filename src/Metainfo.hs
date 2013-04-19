@@ -9,7 +9,7 @@ import qualified Data.ByteString as B;
 import qualified Crypto.Hash.SHA1 as SHA1;
 
 data Metainfo = Metainfo {
-  info :: M.Map String BData,
+  info :: BDict,
   announce :: B.ByteString,
   created :: Int,
   comment :: B.ByteString,
@@ -19,7 +19,7 @@ data Metainfo = Metainfo {
 
 infoHash :: Metainfo -> B.ByteString
 infoHash metainfo = do
-  SHA1.hash $ assumeBString $ fromJust $ M.lookup "pieces" $ info metainfo
+  SHA1.hash $ encode $ BDictionary $ info metainfo
 
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do
