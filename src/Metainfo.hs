@@ -10,11 +10,7 @@ import qualified Crypto.Hash.SHA1 as SHA1;
 
 data Metainfo = Metainfo {
   info :: BDict,
-  announce :: B.ByteString,
-  created :: Int,
-  comment :: B.ByteString,
-  author :: B.ByteString,
-  encoding :: B.ByteString
+  announce :: B.ByteString
 }
 
 infoHash :: Metainfo -> B.ByteString
@@ -35,11 +31,7 @@ metainfoFromURL url = do
 metainfoFromString :: B.ByteString -> Metainfo
 metainfoFromString contents = Metainfo {
     info = assumeBDictionary $ getKey "info",
-    announce = assumeBString $ getKey "announce",
-    created = assumeBInteger $ getKey "created",
-    comment = assumeBString $ getKey "comment",
-    author = assumeBString $ getKey "author",
-    encoding = assumeBString $ getKey "encoding"
+    announce = assumeBString $ getKey "announce"
   }
     where dict = decodeBDictionary contents
           getKey str = fromJust $ M.lookup str dict
