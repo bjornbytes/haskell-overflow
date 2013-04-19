@@ -32,7 +32,6 @@ defaultAnnouncer :: M.Metainfo -> Announcer
 defaultAnnouncer m = Announcer {
   url = M.announce m,
   infoHash = M.infoHash m,
-  peerId = M.infoHash m,
   localPort = 6881,
   uploaded = 0,
   downloaded = 0,

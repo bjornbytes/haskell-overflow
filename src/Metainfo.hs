@@ -29,9 +29,14 @@ metainfoFromURL url = do
   return $ metainfoFromString contents
 
 metainfoFromString :: B.ByteString -> Metainfo
-metainfoFromString contents = Metainfo {
-    info = assumeBDictionary $ getKey "info",
-    announce = assumeBString $ getKey "announce"
-  }
-    where dict = decodeBDictionary contents
-          getKey str = fromJust $ M.lookup str dict
+metainfoFromString contents = case M.lookup "files" $ infoDictionary of
+                                Nothing -> Metainfo {
+                                             info = infoDictionary,
+                                             announce = assumeBString $ getKey "announce"
+                                           }
+                                otherwise -> error "Overflow only supports single-file torrents."
+    where 
+      infoDictionary = assumeBDictionary $ getKey "info"
+      dict = decodeBDictionary contents
+      getKey str = fromJust $ M.lookup str dict
+
