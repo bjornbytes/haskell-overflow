@@ -36,5 +36,5 @@ defaultAnnouncer m = Announcer {
   localPort = 6881,
   uploaded = 0,
   downloaded = 0,
-  left = 0
+  left = 100
 }
