@@ -6,7 +6,6 @@ import Network.URI (parseURI)
 import Network.HTTP;
 import qualified Data.Map as M;
 import qualified Data.ByteString as B;
-import Data.ByteString.Char8 (pack)
 import qualified Crypto.Hash.SHA1 as SHA1;
 
 data Metainfo = Metainfo {
@@ -18,9 +17,9 @@ data Metainfo = Metainfo {
   encoding :: B.ByteString
 }
 
---infoHash :: Metainfo -> IO ()
---infoHash metainfo = do
---  putStrLn $ show $ SHA1.hash $ fromString $ assumeBString $ fromJust $ M.lookup (BString "pieces") $ info metainfo
+infoHash :: Metainfo -> B.ByteString
+infoHash metainfo = do
+  SHA1.hash $ assumeBString $ fromJust $ M.lookup "pieces" $ info metainfo
 
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do

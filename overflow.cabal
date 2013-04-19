@@ -17,5 +17,5 @@ cabal-version:       >=1.8
 executable overflow
   main-is: ../overflow.hs
   -- other-modules:       
-  build-depends:       base ==4.5.*, parsec, containers, bytestring, HTTP, network, cryptohash
+  build-depends:       base ==4.5.*, parsec, containers, bytestring, HTTP, network, cryptohash, http-types
   hs-source-dirs:      src
