@@ -28,7 +28,7 @@ metainfoFromFile filename = do
 
 metainfoFromURL :: String -> IO Metainfo
 metainfoFromURL url = do
-  h <- simpleHTTP . defaultGETRequest_ . fromJust . parseURI $ url
+  h <- simpleHTTP . defaultGETRequest_ . fromJust $ parseURI  url
   contents <- getResponseBody h
   return $ metainfoFromString contents
 
