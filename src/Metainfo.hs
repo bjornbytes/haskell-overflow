@@ -6,15 +6,21 @@ import Network.URI (parseURI)
 import Network.HTTP;
 import qualified Data.Map as M;
 import qualified Data.ByteString as B;
+import Data.ByteString.Char8 (pack)
+import qualified Crypto.Hash.SHA1 as SHA1;
 
 data Metainfo = Metainfo {
-      info :: M.Map BData BData,
-      announce :: String,
-      created :: Int,
-      comment :: String,
-      author :: String,
-      encoding :: String
+  info :: M.Map String BData,
+  announce :: B.ByteString,
+  created :: Int,
+  comment :: B.ByteString,
+  author :: B.ByteString,
+  encoding :: B.ByteString
 }
+
+--infoHash :: Metainfo -> IO ()
+--infoHash metainfo = do
+--  putStrLn $ show $ SHA1.hash $ fromString $ assumeBString $ fromJust $ M.lookup (BString "pieces") $ info metainfo
 
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do
@@ -29,12 +35,12 @@ metainfoFromURL url = do
 
 metainfoFromString :: B.ByteString -> Metainfo
 metainfoFromString contents = Metainfo {
-    info = assumeBDictionary . getKey $ "info",
-    announce = assumeBString . getKey $ "announce",
-    created = assumeBInteger . getKey $ "created",
-    comment = assumeBString . getKey $ "comment",
-    author = assumeBString . getKey $ "author",
-    encoding = assumeBString . getKey $ "encoding"
+    info = assumeBDictionary $ getKey "info",
+    announce = assumeBString $ getKey "announce",
+    created = assumeBInteger $ getKey "created",
+    comment = assumeBString $ getKey "comment",
+    author = assumeBString $ getKey "author",
+    encoding = assumeBString $ getKey "encoding"
   }
-  where dict = decodeBDictionary contents
-        getKey str = fromJust $ M.lookup (BString str) dict
+    where dict = decodeBDictionary contents
+          getKey str = fromJust $ M.lookup str dict
