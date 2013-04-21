@@ -20,12 +20,15 @@ data Announcer = Announcer {
   left :: Int
 }
 
-announce :: String -> Announcer -> IO [P.Peer]
+announce :: String -> Announcer -> IO [P.InactivePeer]
 announce event a = do
-  putStrLn $ announceRequest event a
   h <- simpleHTTP $ defaultGETRequest_ $ fromJust $ parseURI $ announceRequest event a
   response <- getResponseBody h
-  return $ parsePeers $ assumeBString $ fromJust $ M.lookup "peers" $ decodeBDictionary response
+  print response
+  let peers = parsePeers $ assumeBString $ fromJust $ M.lookup "peers" $ decodeBDictionary response
+  putStrLn $ "Announce returned " ++ (show $ length peers) ++ " peers:"
+  sequence $ map (print . P.ip) peers
+  return peers
 
 announceRequest :: String -> Announcer -> String
 announceRequest event a = C.unpack $ B.append (url a) $ B.concat
@@ -37,17 +40,13 @@ announceRequest event a = C.unpack $ B.append (url a) $ B.concat
                       , C.pack "&left=", C.pack $ show $ left a
                       , C.pack "&compact=1" ]
 
-parsePeers :: B.ByteString -> [P.Peer]
+parsePeers :: B.ByteString -> [P.InactivePeer]
 parsePeers str = case B.length str of
                    0 -> []
                    otherwise -> p:(parsePeers rest)
-                                   where p = P.Peer {
-                                               P.ip = C.unpack $ B.take 4 piece,
-                                               P.port = ((fromIntegral $ B.head $ B.drop 4 piece) * 256) + (fromIntegral $ B.head $ B.drop 5 piece),
-
-                                               P.interested = False,
-                                               P.interesting = False,
-                                               P.choked = True,
-                                               P.choking = True
+                                   where p = P.InactivePeer {
+                                               P.ip = convertIp $ B.take 4 piece,
+                                               P.port = ((fromIntegral $ B.head $ B.drop 4 piece) * 256) + (fromIntegral $ B.head $ B.drop 5 piece)
                                              }
                                          (piece, rest) = B.splitAt 6 str
+                                         convertIp str = C.unpack $ B.tail $ B.concatMap (C.pack . (++) "." . show) str

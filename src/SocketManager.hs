@@ -1,19 +1,21 @@
 module SocketManager where
 
 import Network
+import System.IO
+import Control.Concurrent
 
-socketVoid :: [Socket]
-socketVoid = []
+import TorrentManager
 
-listenOn :: Int -> IO ()
-listenOn port = do
+listenOn :: Int -> MVar () -> IO ()
+listenOn port done = do
   sock <- Network.listenOn $ PortNumber $ fromIntegral port
   putStrLn $ "Listening on " ++ (show port) ++ "..."
-  acceptHandler sock
+  acceptHandler sock done
 
-acceptHandler :: Socket -> IO ()
-acceptHandler sock = do
-  (handle, ip, port) <- accept sock
-  putStrLn $ "New connection from " ++ (show ip) ++ ":" ++ (show port)
-  --Do stuff
-  acceptHandler sock
+acceptHandler :: Socket -> MVar () -> IO ()
+acceptHandler sock done = do
+  credentials@(handle, ip, port) <- accept sock
+  putStrLn $ "New connection from " ++ ip ++ ":" ++ (show port)
+  hSetBuffering handle NoBuffering
+  forkIO $ handshakeHandler credentials done
+  acceptHandler sock done

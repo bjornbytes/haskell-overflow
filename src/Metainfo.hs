@@ -9,13 +9,16 @@ import qualified Data.ByteString as B;
 import qualified Crypto.Hash.SHA1 as SHA1;
 
 data Metainfo = Metainfo {
-  info :: BDict,
-  announce :: B.ByteString
+  announce :: B.ByteString,
+  info :: BDict
 }
 
 infoHash :: Metainfo -> B.ByteString
-infoHash metainfo = do
-  SHA1.hash $ encode $ BDictionary $ info metainfo
+infoHash m = do
+  SHA1.hash $ encode $ BDictionary $ info m
+
+infoLength :: Metainfo -> Int
+infoLength m = assumeBInteger $ fromJust $ M.lookup "length" $ info m
 
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do

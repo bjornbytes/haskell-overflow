@@ -5,6 +5,7 @@ import qualified Metainfo as M
 import Peer
 import Announcer
 import Torrent
+import TorrentManager
 import SocketManager
 import qualified Network.HTTP.Types.URI as U;
 import qualified Data.ByteString as B;
@@ -13,10 +14,12 @@ import Data.Char (ord)
 import qualified Data.Map as Map;
 import Data.Maybe
 import Control.Concurrent
+import Control.Monad
 
 main :: IO ()
 main = do
-  forkIO $ listenOn 6888
-  t <- torrentFromURL "http://cdimage.ubuntu.com/kubuntu/releases/quantal/release/kubuntu-12.10-desktop-amd64.iso.torrent"
-  putStrLn $ "Downloading " ++ (C.unpack $ assumeBString $ fromJust $ Map.lookup "name" $ M.info $ metainfo t) ++ " [" ++ (show $ assumeBInteger $ fromJust $ Map.lookup "length" $ M.info $ metainfo t) ++ " bytes]..."
-
+  done <- newEmptyMVar
+  forkIO $ listenOn 6060 done
+  t <- addTorrentFromURL "http://cdimage.ubuntu.com/kubuntu/releases/quantal/release/kubuntu-12.10-desktop-amd64.iso.torrent"
+  start t
+  takeMVar done
