@@ -14,8 +14,6 @@ import Metainfo
 import Torrent
 import Peer
 
-Monad
-
 --Th-There must be another way...
 torrentMap :: IORef (Map.Map B.ByteString Torrent)
 torrentMap = unsafePerformIO $ newIORef Map.empty
@@ -48,7 +46,7 @@ handshakeHandler credentials@(handle, ip, port) done = do
         where torrent = fromJust $ Map.lookup (slice (1 + pLen + 8) 20 line) tMap
               peer = ActivePeer {
                        peerId = slice (1 + pLen + 8 + 20) 20 line,
-                       credentials = credentials,
+                       prHandle = handle,
                        
                        interested = False,
                        interesting = False,

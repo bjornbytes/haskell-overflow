@@ -14,6 +14,9 @@ import Network.Socket
 import System.IO
 import Control.Concurrent
 
+import Config
+import Protocol
+
 data Torrent = Torrent {
   metainfo :: M.Metainfo,
   announcer :: Announcer,
@@ -24,53 +27,27 @@ data Torrent = Torrent {
 start :: Torrent -> IO ()
 start t = do
   peers <- announce "started" $ announcer t
-  sequence $ map (forkIO . initiateHandshake t) peers 
+  sequence $ map (forkIO . torrentHandshake) peers 
   return ()
 
-slice2 :: Int -> Int -> B.ByteString -> B.ByteString
-slice2 start length str = B.take length $ snd $ B.splitAt start str
+torrentHandshake :: Torrent
+                 -> InactivePeer
+                 -> IO ()
+torrentHandshake torrent peer = do
+ 	handle <- connectTo (ip peer) (PortNumber $ fromIntegral $ port peer)
+ 	hSetBuffering handle NoBuffering
+ 	sendHandshake handle (infoHash $ metainfo torrent) (C.pack $ peerIdPrefix ++ "353535353535")
+ 	activePeer <- recvHandshake handle
+ 	addActivePeer activePeer $ activePeers torrent
+ 	torrentMain torrent activePeer
 
-initiateHandshake :: Torrent -> InactivePeer -> IO ()
-initiateHandshake t p = do
-  putStrLn $ "Connecting to " ++ (ip p) ++ ":" ++ (show $ port p)
-  handle <- connectTo (ip p) (PortNumber $ fromIntegral $ port p)
-  hSetBuffering handle NoBuffering
-  C.hPutStr handle buildHandshakeString
- 
-  putStrLn "Sent handshake, waiting for response"
-  line <- B.hGetLine handle --Wait for a response
-  C.putStrLn $ line
-  let pLen = read $ show $ B.head line
-  let protocol = slice2 1 pLen line
-  case C.unpack protocol of
-    "BitTorrent protocol" -> do
-        addActivePeer peer $ activePeers t
-        putStrLn $ "Client connected using protocol p" ++ (show protocol)
-        forkIO $ handleMessage handle peer t
-        return ()
-        where peer = ActivePeer {
-                       peerId = slice2 (1 + pLen + 8 + 20) 20 line,
-                       credentials = undefined,
-                       
-                       interested = False,
-                       interesting = False,
-                       choking = True,
-                       choked = True
-                     }
-    otherwise -> putStrLn $ "Unsupported protocol: " ++ (show protocol)
-  return ()
-    where buildHandshakeString = B.concat
-                                 [ B.singleton (fromIntegral 19)
-                                 , C.pack "BitTorrent protocol"
-                                 , B.replicate 8 (fromIntegral 0)
-                                 , M.infoHash $ metainfo t
-                                 , C.pack "-OF0001-353535353535"
-                                 ]
-
-handleMessage :: Handle -> ActivePeer -> Torrent -> IO ()
-handleMessage handle p t = do
-  line <- hGetLine handle
-  putStrLn $ "Received " ++ line
+torrentMain :: Torrent
+            -> ActivePeer
+            -> IO ()
+torrentMain = forever $ do
+	msg@(header, payload) <- recvMessage
+	C.putStrLn $ "Received " ++ header
+	processMessage msg
 
 addInactivePeer :: InactivePeer -> IORef [InactivePeer] -> IO ()
 addInactivePeer p ps = do
@@ -108,7 +85,6 @@ defaultAnnouncer :: M.Metainfo -> Announcer
 defaultAnnouncer m = Announcer {
   url = M.announce m,
   infoHash = M.infoHash m,
-  localPort = 6060,
   uploaded = 0,
   downloaded = 0,
   left = M.infoLength m

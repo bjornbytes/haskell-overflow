@@ -16,10 +16,12 @@ import Data.Maybe
 import Control.Concurrent
 import Control.Monad
 
+import Config
+
 main :: IO ()
 main = do
   done <- newEmptyMVar
-  forkIO $ listenOn 6060 done
+  forkIO $ listenOn localPort done
   t <- addTorrentFromURL "http://cdimage.ubuntu.com/kubuntu/releases/quantal/release/kubuntu-12.10-desktop-amd64.iso.torrent"
   start t
   takeMVar done

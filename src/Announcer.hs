@@ -10,11 +10,12 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as M;
 
+import Config
+
 data Announcer = Announcer {
   url :: B.ByteString,
   
   infoHash :: B.ByteString,
-  localPort :: Int,
   uploaded :: Int,
   downloaded :: Int,
   left :: Int
@@ -34,7 +35,7 @@ announceRequest :: String -> Announcer -> String
 announceRequest event a = C.unpack $ B.append (url a) $ B.concat
                       [ C.pack "?info_hash=", U.urlEncode True $ infoHash a
                       , C.pack "&peer_id=", U.urlEncode True $ C.pack "-OF0001-353535353535"
-                      , C.pack "&port=", C.pack $ show $ localPort a
+                      , C.pack "&port=", C.pack $ show $ localPort
                       , C.pack "&uploaded=", C.pack $ show $ uploaded a
                       , C.pack "&downloaded=", C.pack $ show $ downloaded a
                       , C.pack "&left=", C.pack $ show $ left a

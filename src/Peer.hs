@@ -11,7 +11,7 @@ data InactivePeer = InactivePeer {
 
 data ActivePeer = ActivePeer {
   peerId :: B.ByteString,
-  credentials :: (Handle, HostName, PortNumber),
+  prHandle :: Handle,
 
   interested :: Bool,  --The peer is interested in us.
   interesting :: Bool, --The peer is interesting to us.
