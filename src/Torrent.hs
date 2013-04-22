@@ -48,7 +48,7 @@ torrentHandshake torrent peer = do
 torrentMain :: Torrent
             -> ActivePeer
             -> IO ()
-torrentMain torrent peer = forever $ do #AE81DF
+torrentMain torrent peer = forever $ do
 	msg@(header, payload) <- recvMessage (prHandle peer)
 	processMessage peer msg
 
@@ -86,7 +86,7 @@ processMessage peer (header, payload) =
 			let [pieceIdx, offset, len] = payload
 
 			-- Make sure to never send the peer the specified block.
-			
+
 			return ()
 
 addInactivePeer :: InactivePeer -> IORef [InactivePeer] -> IO ()
