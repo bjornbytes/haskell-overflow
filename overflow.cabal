@@ -6,7 +6,6 @@ version:             0.1.0.0
 synopsis:            A simple torrent client written in Haskell.
 -- description:         
 license:             MIT
-license-file:        LICENSE
 author:              Bjorn Swenson
 maintainer:          tie372@unm.edu
 -- copyright:           
@@ -17,5 +16,5 @@ cabal-version:       >=1.8
 executable overflow
   main-is: ../overflow.hs
   -- other-modules:       
-  build-depends:       base ==4.5.*, parsec, containers, bytestring, HTTP, network, cryptohash, http-types
+  build-depends:       base ==4.5.*, parsec, containers, bytestring, HTTP, network, cryptohash, http-types, binary, array
   hs-source-dirs:      src

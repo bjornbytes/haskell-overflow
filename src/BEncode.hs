@@ -94,7 +94,6 @@ bstring = do
   s <- count n anyChar
   return $ BString $ read (show s)
 
---TODO: Adhere more closely to the BEncoding spec.
 binteger :: Parser BData
 binteger = do
   char 'i'

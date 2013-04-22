@@ -17,5 +17,6 @@ acceptHandler sock done = do
   credentials@(handle, ip, port) <- accept sock
   putStrLn $ "New connection from " ++ ip ++ ":" ++ (show port)
   hSetBuffering handle NoBuffering
-  forkIO $ handshakeHandler credentials done
+  forkIO $ handshakeHandler handle
   acceptHandler sock done
+  putMVar done ()

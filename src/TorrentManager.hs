@@ -31,29 +31,23 @@ addTorrentFromFile filename = do
   return t
 
 --SocketManager calls this when the first message is received from a new client.
-handshakeHandler :: (Handle, HostName, PortNumber) -> MVar () -> IO ()
-handshakeHandler credentials@(handle, ip, port) done = do
-  line <- B.hGetLine handle
-  tMap <- readIORef torrentMap
-  let pLen = read $ show $ slice 0 1 line
-  let protocol = slice 1 pLen line
-  case C.unpack protocol of
-    "BitTorrent protocol" -> do
-        addActivePeer peer $ activePeers torrent
-        putStrLn $ "Client connected using protocol" ++ (show protocol)
-        putMVar done ()
-        messageHandler credentials peer torrent
-        where torrent = fromJust $ Map.lookup (slice (1 + pLen + 8) 20 line) tMap
-              peer = ActivePeer {
-                       peerId = slice (1 + pLen + 8 + 20) 20 line,
-                       prHandle = handle,
-                       
-                       interested = False,
-                       interesting = False,
-                       choking = True,
-                       choked = True
-                     }
-    otherwise -> putStrLn $ "Unsupported protocol: " ++ (show protocol)
+handshakeHandler :: Handle -> IO ()
+handshakeHandler handle = do
+  putStrLn "Todo: Accept new connections correctly."
+	{--addActivePeer peer $ activePeers torrent
+  putStrLn $ "Client connected using protocol" ++ (show protocol)
+  putMVar done ()
+  messageHandler credentials peer torrent
+  where torrent = fromJust $ Map.lookup (slice (1 + pLen + 8) 20 line) tMap
+        peer = ActivePeer {
+                 peerId = slice (1 + pLen + 8 + 20) 20 line,
+                 prHandle = handle,
+                 
+                 interested = False,
+                 interesting = False,
+                 choking = True,
+                 choked = True
+                     }--}
 
 messageHandler :: (Handle, HostName, PortNumber) -> ActivePeer -> Torrent -> IO ()
 messageHandler credentials@(handle, ip, port) peer torrent = do

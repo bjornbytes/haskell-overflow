@@ -15,10 +15,16 @@ data Metainfo = Metainfo {
 
 infoHash :: Metainfo -> B.ByteString
 infoHash m = do
-  SHA1.hash $ encode $ BDictionary $ info m
+	SHA1.hash $ encode $ BDictionary $ info m
 
 infoLength :: Metainfo -> Int
 infoLength m = assumeBInteger $ fromJust $ M.lookup "length" $ info m
+
+infoPieceLength :: Metainfo -> Int
+infoPieceLength m = assumeBInteger $ fromJust $ M.lookup "piece length" $ info m
+
+infoPieceCount :: Metainfo -> Int
+infoPieceCount m = (infoLength m `div` infoPieceLength m) + 1
 
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do

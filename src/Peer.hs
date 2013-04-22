@@ -1,20 +1,24 @@
 module Peer where
 
-import qualified Data.ByteString as B;
+import qualified Data.ByteString as B
 import System.IO
-import Network;
+import Network
+import Data.IORef
+import Data.Array.IO
 
 data InactivePeer = InactivePeer {
-  ip :: String,
-  port :: Int
+	ip :: String,
+	port :: Int
 } deriving (Show)
 
 data ActivePeer = ActivePeer {
-  peerId :: B.ByteString,
-  prHandle :: Handle,
+	prId :: B.ByteString,
+	prHandle :: Handle,
 
-  interested :: Bool,  --The peer is interested in us.
-  interesting :: Bool, --The peer is interesting to us.
-  choked :: Bool,      --The peer is choked by us.
-  choking :: Bool      --The peer is choking us.
+	prInterested :: IORef Bool,   --The peer is interested in us.
+	prInteresting :: IORef Bool,  --The peer is interesting to us.
+	prChoked :: IORef Bool,       --The peer is choked by us.
+	prChoking :: IORef Bool,      --The peer is choking us.
+
+	prPieces :: IOUArray Int Bool   --Maps piece indices (0-indexed) to a Bool indicating whether or not the peer has the piece (not always 100% accurate).
 }
