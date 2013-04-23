@@ -8,6 +8,7 @@ import System.IO
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
+import Data.Binary.Put
 import Data.Binary.Get
 import Data.IORef
 import Data.Array.IO
@@ -56,8 +57,7 @@ recvHandshake handle metainfo = do
 		False -> error $ "Connected client is not using \"" ++ protocol ++ "\" protocol."
 
 
-recvMessage :: Handle
-            -> IO (MsgHeader, [B.ByteString])
+recvMessage :: Handle -> IO (MsgHeader, [B.ByteString])
 recvMessage handle = do
 	sizeBytes <- B.hGet handle 4
 	if (B.length sizeBytes) < 4
@@ -71,8 +71,20 @@ recvMessage handle = do
 				0 -> return (MsgKeepAlive, [B.empty])
 				otherwise -> do
 					body <- B.hGet handle size
-					return $ parseMessage $ slices [0, 1, size-1] body
+					return $ parseMessage $ slices [0, 1, size] body
 
+sendMessage :: Handle
+            -> MsgHeader
+            -> [B.ByteString]
+            -> IO ()
+sendMessage handle header payload = do
+	putStrLn $ "Sending " ++ (show header)
+	case header of
+		MsgKeepAlive -> B.hPut handle $ writeInt 0
+		MsgChoke -> B.hPut handle $ B.concat [writeInt 1, writeInt 0]
+		MsgUnchoke -> B.hPut handle $ B.concat [writeInt 1, writeInt 1]
+		MsgInterested -> B.hPut handle $ B.concat [writeInt 1, writeInt 2]
+		MsgUninterested -> B.hPut handle $ B.concat [writeInt 1, writeInt 3]
 
 parseMessage :: [B.ByteString]              -- Id and payload of message
              -> (MsgHeader, [B.ByteString])
@@ -90,6 +102,9 @@ parseMessage [msgId, payload] = case (fromIntegral $ B.head msgId) of
 
 readInt :: B.ByteString -> Int
 readInt x = fromIntegral $ runGet getWord32be $ L.fromChunks . return $ x
+
+writeInt :: Int -> B.ByteString
+writeInt x = B.concat . L.toChunks $ runPut $ putWord32be $ fromIntegral $ x
 
 slice :: Int -> Int -> B.ByteString -> B.ByteString
 slice start len str = B.take len $ snd $ B.splitAt start str

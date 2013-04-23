@@ -1,34 +1,35 @@
 module Torrent where
 
-import qualified Metainfo as M
-import Announcer
-import Peer
-import System.IO.Unsafe
 import Data.IORef
 import Data.Array.IO
-
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
 import Network
 import Network.Socket
 import System.IO
 import Control.Concurrent
 import Control.Monad
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as C
 
+import Announcer
 import Config
+import Peer
+import Piece
 import Protocol
+import qualified Metainfo as M
 
 data Torrent = Torrent {
 	metainfo :: M.Metainfo,
 	announcer :: Announcer,
 	inactivePeers :: IORef [InactivePeer],
-	activePeers :: IORef [ActivePeer]
+	activePeers :: IORef [ActivePeer],
+
+	pieces :: IOArray Int Piece
 }
 
 start :: Torrent -> IO ()
 start t = do
 	peers <- announce "started" $ announcer t
-	sequence $ map (forkIO . torrentHandshake t) peers 
+	sequence $ map (forkIO . torrentHandshake t) peers
 	return ()
 
 torrentHandshake :: Torrent
@@ -50,20 +51,32 @@ torrentMain :: Torrent
             -> IO ()
 torrentMain torrent peer = forever $ do
 	msg@(header, payload) <- recvMessage (prHandle peer)
-	processMessage peer msg
+	processMessage torrent peer msg
 
-processMessage :: ActivePeer
+processMessage :: Torrent
+               -> ActivePeer
                -> (MsgHeader, [B.ByteString])
                -> IO ()
-processMessage peer (header, payload) = 
+processMessage torrent peer (header, payload) = do
+	putStrLn $ "Received " ++ (show header)
 	case header of
 		MsgChoke -> writeIORef (prChoking peer) True
 		MsgUnchoke -> writeIORef (prChoking peer) False
 		MsgInterested -> writeIORef (prInterested peer) True
 		MsgUninterested -> writeIORef (prInterested peer) False
 		MsgHave -> do
-			writeArray (prPieces peer) (readInt $ head payload) True
-			return ()
+			let idx = (readInt $ head payload)
+			writeArray (prPieces peer) idx True
+
+			piece <- readArray (pieces torrent) idx
+			isComplete <- readIORef (pcComplete piece)
+			isInteresting <- readIORef (prInteresting peer)
+			if (isComplete == False) && (isInteresting == False)
+				then do
+					writeIORef (prInteresting peer) True
+					sendMessage (prHandle peer) MsgInterested []
+					return ()
+				else return ()
 		MsgBitfield -> do
 
 			-- Parse the payload into a list of Bools, then make an assocs call.
@@ -90,35 +103,33 @@ processMessage peer (header, payload) =
 			return ()
 
 addInactivePeer :: InactivePeer -> IORef [InactivePeer] -> IO ()
-addInactivePeer p ps = do
-	modifyIORef ps (p:)
+addInactivePeer p ps = modifyIORef ps (p:)
 
 addActivePeer :: ActivePeer -> IORef [ActivePeer] -> IO ()
-addActivePeer p ps = do
-	modifyIORef ps (p:)
+addActivePeer p ps = modifyIORef ps (p:)
 
 torrentFromFile :: String -> IO Torrent
 torrentFromFile filename = do
 	m <- M.metainfoFromFile filename
-	inactives <- newIORef []
-	actives <- newIORef []
-	return Torrent {
-		metainfo = m,
-		announcer = defaultAnnouncer m,
-		inactivePeers = inactives,
-		activePeers = actives
-	}
+	torrentFromMetainfo m
 
 torrentFromURL :: String -> IO Torrent
 torrentFromURL url = do
 	m <- M.metainfoFromURL url
+	torrentFromMetainfo m
+
+torrentFromMetainfo :: M.Metainfo -> IO Torrent
+torrentFromMetainfo m = do
 	inactives <- newIORef []
 	actives <- newIORef []
+	pieces <- mapM (\x -> mkPiece x (M.infoPieceLength m) (M.infoPieceHash m x)) [1..(M.infoPieceCount m)]
+	pieceArray <- newListArray (0, (M.infoPieceCount m) - 1) pieces
 	return Torrent {
 		metainfo = m,
 		announcer = defaultAnnouncer m,
 		inactivePeers = inactives,
-		activePeers = actives
+		activePeers = actives,
+		pieces = pieceArray
 	}
 
 defaultAnnouncer :: M.Metainfo -> Announcer

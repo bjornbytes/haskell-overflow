@@ -26,6 +26,9 @@ infoPieceLength m = assumeBInteger $ fromJust $ M.lookup "piece length" $ info m
 infoPieceCount :: Metainfo -> Int
 infoPieceCount m = (infoLength m `div` infoPieceLength m) + 1
 
+infoPieceHash :: Metainfo -> Int -> B.ByteString
+infoPieceHash m pieceIdx = B.empty
+
 metainfoFromFile :: String -> IO Metainfo
 metainfoFromFile filename = do
   contents <- B.readFile filename
