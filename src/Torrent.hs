@@ -91,8 +91,8 @@ processMessage torrent peer (header, payload) = do
 		MsgPiece -> do
 			let [pieceIdx, offset, content] = payload
 
-			-- Write the content to the file, at byte position (pieceIdx * pieceSize + offset)
-			-- Update our 'local bitfield'.  If we completed a piece, hash check it and broadcast a MsgHave.
+			piece <- readArray (pieces torrent) (readInt pieceIdx)
+			writeBlock piece (readInt offset) content
 
 			return ()
 		MsgCancel -> do

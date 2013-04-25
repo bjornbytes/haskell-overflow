@@ -57,3 +57,5 @@ messageHandler credentials@(handle, ip, port) peer torrent = do
 
 slice :: Int -> Int -> B.ByteString -> B.ByteString
 slice start length str = B.take length $ snd $ B.splitAt start str
+
+
