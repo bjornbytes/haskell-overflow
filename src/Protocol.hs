@@ -36,8 +36,11 @@ recvHandshake :: Handle        -- The handle to receive from.
               -> Metainfo      -- The metainfo object associated with this torrent.
               -> IO ActivePeer -- The peer constructed from the received handshake.
 recvHandshake handle metainfo = do
-	str <- B.hGetLine handle
-	let [pLen, pStr, rsrv, hash, peer] = slices [0, 1, 20, 28, 48, B.length str] str
+	pLen <- B.hGet handle 1
+	pStr <- B.hGet handle (readWord pLen)
+	rsrv <- B.hGet handle 8
+	hash <- B.hGet handle 20
+	peer <- B.hGet handle 20
 	case (C.unpack pStr) == protocol of
 		True  -> do
 			interested <- newIORef False
@@ -45,6 +48,7 @@ recvHandshake handle metainfo = do
 			choked <- newIORef True
 			choking <- newIORef False
 			pieces <- newArray (0, (infoPieceCount metainfo) - 1) False
+			wanted <- newIORef (-1)
 			return ActivePeer {
                           prId = peer,
                           prHandle = handle,
@@ -52,7 +56,8 @@ recvHandshake handle metainfo = do
                           prInteresting = interesting,
                           prChoked = choked,
                           prChoking = choking,
-                          prPieces = pieces
+                          prPieces = pieces,
+                          prWantedPiece = wanted
                         }
 		False -> error $ "Connected client is not using \"" ++ protocol ++ "\" protocol."
 
@@ -81,10 +86,15 @@ sendMessage handle header payload = do
 	putStrLn $ "Sending " ++ (show header)
 	case header of
 		MsgKeepAlive -> B.hPut handle $ writeInt 0
-		MsgChoke -> B.hPut handle $ B.concat [writeInt 1, writeInt 0]
-		MsgUnchoke -> B.hPut handle $ B.concat [writeInt 1, writeInt 1]
-		MsgInterested -> B.hPut handle $ B.concat [writeInt 1, writeInt 2]
-		MsgUninterested -> B.hPut handle $ B.concat [writeInt 1, writeInt 3]
+		MsgChoke -> B.hPut handle $ B.concat [writeInt 1, writeWord 0]
+		MsgUnchoke -> B.hPut handle $ B.concat [writeInt 1, writeWord 1]
+		MsgInterested -> B.hPut handle $ B.concat [writeInt 1, writeWord 2]
+		MsgUninterested -> B.hPut handle $ B.concat [writeInt 1, writeWord 3]
+		MsgHave -> B.hPut handle $ B.append (B.concat [writeInt 5, writeWord 4]) (B.concat payload)
+		--MsgBitfield ->
+		MsgRequest -> B.hPut handle $ B.append (B.concat [writeInt 13, writeWord 6]) (B.concat payload)
+		MsgPiece -> B.hPut handle $ B.append (B.concat [writeInt (9 + (B.length (last payload))), writeWord 7]) (B.concat payload)
+		otherwise ->  return ()
 
 parseMessage :: [B.ByteString]              -- Id and payload of message
              -> (MsgHeader, [B.ByteString])
@@ -103,8 +113,14 @@ parseMessage [msgId, payload] = case (fromIntegral $ B.head msgId) of
 readInt :: B.ByteString -> Int
 readInt x = fromIntegral $ runGet getWord32be $ L.fromChunks . return $ x
 
+readWord :: B.ByteString -> Int
+readWord x = fromIntegral $ runGet getWord8 $ L.fromChunks . return $ x
+
 writeInt :: Int -> B.ByteString
 writeInt x = B.concat . L.toChunks $ runPut $ putWord32be $ fromIntegral $ x
+
+writeWord :: Int -> B.ByteString
+writeWord x = B.singleton (fromIntegral x)
 
 slice :: Int -> Int -> B.ByteString -> B.ByteString
 slice start len str = B.take len $ snd $ B.splitAt start str

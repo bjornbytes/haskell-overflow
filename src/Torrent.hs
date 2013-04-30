@@ -1,5 +1,7 @@
 module Torrent where
 
+import Data.List
+import Data.Maybe
 import Data.IORef
 import Data.Array.IO
 import Network
@@ -60,8 +62,19 @@ processMessage :: Torrent
 processMessage torrent peer (header, payload) = do
 	putStrLn $ "Received " ++ (show header)
 	case header of
+		MsgKeepAlive -> return ()
 		MsgChoke -> writeIORef (prChoking peer) True
-		MsgUnchoke -> writeIORef (prChoking peer) False
+		MsgUnchoke -> do
+			writeIORef (prChoking peer) False
+			wanted <- readIORef (prWantedPiece peer)
+			if wanted == -1
+				then return ()
+				else do
+					piece <- readArray (pieces torrent) wanted
+					bitfield <- getElems $ pcBitfield piece
+					let blockIdx = fromJust $ elemIndex False bitfield
+					putStrLn $ "\tRequesting " ++ (show wanted) ++ ":" ++ (show blockIdx)
+					sendMessage (prHandle peer) MsgRequest $ map writeInt [wanted, blockIdx * 16384, 16384]
 		MsgInterested -> writeIORef (prInterested peer) True
 		MsgUninterested -> writeIORef (prInterested peer) False
 		MsgHave -> do
@@ -74,22 +87,51 @@ processMessage torrent peer (header, payload) = do
 			if (isComplete == False) && (isInteresting == False)
 				then do
 					writeIORef (prInteresting peer) True
+					writeIORef (prWantedPiece peer) idx
 					sendMessage (prHandle peer) MsgInterested []
 					return ()
 				else return ()
 		MsgBitfield -> do
 
-			-- Parse the payload into a list of Bools, then make an assocs call.
+			--First, convert the sequence of bytes they sent us into an array of bools, writing each bool to their Pieces array.
+			sequence $ map (\(i,x) -> do { writeArray (prPieces peer) i (toBool $ readWord $ (B.singleton x)); return x }) $ zip [1..] $ B.unpack $ head payload
 
-			return ()
+			--Then, find a piece which they have that we do not have and set this as our wantedPiece for that peer.
+			myAssocs <- getAssocs $ pieces torrent
+			myBitfield <- sequence $ map (\(x,y) -> do { z <- readIORef $ pcComplete y; return (x, z) }) $ myAssocs -- Array of Bools representing which pieces we have completed for this torrent.
+			theirBitfield <- getAssocs $ prPieces peer
+
+			let wanted = [i | (i,a) <- myBitfield, (j,b) <- theirBitfield, (a == False) && (b == True), i == j]
+
+			case length wanted of
+				0 -> return ()
+				otherwise -> do
+					writeIORef (prInteresting peer) True
+					writeIORef (prWantedPiece peer) $ head wanted
+					return ()
+			where toBool x = case x of
+					0 -> False
+					otherwise -> True
 		MsgRequest -> do
-			let [pieceIdx, offset, len] = payload
+			let [pieceIdx, offset, len] = map readInt payload
 
-			-- Check if I have the requested block of the requested piece.  If so, send a MsgPiece message.
+			piece <- readArray (pieces torrent) pieceIdx
+			let blockRange = [(offset `div` 16384) .. ((offset `div` 16384) + (len `div` 16384))]
+			bitfield <- getElems $ pcBitfield piece
 
-			return ()
+			if (==True) $ and $ take ((last blockRange) - (head blockRange) + 1) $ drop (head blockRange) $ bitfield
+				then do
+					blocks <- getElems $ pcBlocks piece
+					sendMessage (prHandle peer) MsgPiece $ (++) (init payload) $ take ((last blockRange) - (head blockRange) + 1) $ drop (head blockRange) $ blocks
+					return ()
+				else
+					--I don't have this piece.  Ignore this annoying person.
+					return ()
+
 		MsgPiece -> do
 			let [pieceIdx, offset, content] = payload
+
+			putStrLn $ "\t\tReceived Piece " ++ (show $ readInt $ pieceIdx) ++ ":" ++ (show $ ((readInt offset) `div` 16384))
 
 			piece <- readArray (pieces torrent) (readInt pieceIdx)
 			writeBlock piece (readInt offset) content

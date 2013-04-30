@@ -19,5 +19,6 @@ data ActivePeer = ActivePeer {
 	prChoked :: IORef Bool,         --The peer is choked by us.
 	prChoking :: IORef Bool,        --The peer is choking us.
 
-	prPieces :: IOUArray Int Bool   --Maps piece indices (0-indexed) to a Bool indicating whether or not the peer has the piece (not always 100% accurate).
+	prPieces :: IOUArray Int Bool,  --Maps piece indices (0-indexed) to a Bool indicating whether or not the peer has the piece (not always 100% accurate).
+	prWantedPiece :: IORef Int
 }
